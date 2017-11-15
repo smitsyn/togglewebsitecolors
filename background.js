@@ -23,6 +23,7 @@
 // Global information store. Stores "CSS applied" status for tabs.
 var gTabHasCSS = {};
 
+
 // Function to apply our CSS to the given tab.
 async function InsertCSS(aID) {
   const xhr = new XMLHttpRequest();
@@ -41,12 +42,22 @@ async function InsertCSS(aID) {
   css = css.replace(/\$LINKCOLOR/g, link);
   css = css.replace(/\$VISITEDCOLOR/g, visited);
 
-  await browser.tabs.insertCSS(aID, {
-    allFrames: true,
-    cssOrigin: "user",
-    code: css
-  });
   gTabHasCSS[aID] = css;
+  
+  try
+  {
+    await browser.tabs.insertCSS(aID, {
+      allFrames: true,
+      cssOrigin: "user",
+      code: css
+    });
+  }
+  catch (err)
+  {
+	;
+    // do nothing (that's no permissions exception)
+  }
+  
 }
 
 // Function to remove our CSS from the given tab.
@@ -92,7 +103,7 @@ function TabUpdated(aID, aChangeInfo, aTab) {
 
 // Fired if a new tab is activated.
 async function TabActivated(aActiveInfo) {
-  await CheckForAutoDisable(aActiveInfo.tabId);
+  //await CheckForAutoDisable(aActiveInfo.tabId);
   browser.contextMenus.update("toggle-colors-menu", {
     checked: !HasCSS(aActiveInfo.tabId)
   });
@@ -107,6 +118,10 @@ async function CheckForAutoDisable(aID) {
     await InsertCSS(aID);
 }
 
+async function TabCreated(aTab) {
+	await InsertCSS(aTab.id);
+}
+
 /*
  * Initialization
  */
@@ -115,6 +130,7 @@ async function CheckForAutoDisable(aID) {
 browser.contextMenus.onClicked.addListener(ContextMenuClicked);
 browser.tabs.onUpdated.addListener(TabUpdated);
 browser.tabs.onActivated.addListener(TabActivated);
+browser.tabs.onCreated.addListener(TabCreated);
 
 // Create our context menu
 browser.contextMenus.create({
